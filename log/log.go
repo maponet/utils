@@ -91,8 +91,8 @@ func StringToLevel(name string) (int, error) {
 	return level, nil
 }
 
-func FlagLevel() *string {
-	return flag.String("log", "ERROR", "set log level [ERROR|INFO|DEBUG]")
+func FlagLevel(flagname string) *string {
+	return flag.String(flagname, "ERROR", "set loglevel [ERROR|INFO|DEBUG]")
 }
 
 type logger struct {
