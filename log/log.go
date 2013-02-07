@@ -85,6 +85,10 @@ func StringToLevel(name string) (int, error) {
 		level = INFO
 	case "DEBUG":
 		level = DEBUG
+	case "":
+		// if no log level was passed in configuration file or on command line
+		// then we will use this default value
+		level = ERROR
 	default:
 		return -1, ErrLevel
 	}
@@ -92,7 +96,7 @@ func StringToLevel(name string) (int, error) {
 }
 
 func FlagLevel(flagname string) *string {
-	return flag.String(flagname, "ERROR", "set loglevel [ERROR|INFO|DEBUG]")
+	return flag.String(flagname, "", "set loglevel [ERROR|INFO|DEBUG]")
 }
 
 type logger struct {
