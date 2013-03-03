@@ -23,11 +23,10 @@ Package log contains a simple multi-level logger.
 package log
 
 import (
-	"errors"
-	"flag"
 	"fmt"
 	"os"
 	"time"
+	"io"
 )
 
 // Available log levels
@@ -37,11 +36,24 @@ const (
 	DEBUG
 )
 
-// ErrLevel indicates that the specified log level is not valid.
-var ErrLevel = errors.New("Unknown log level")
+// BadLevelError indicates that the specified log level is not valid.
+type BadLevelError struct {
+	level interface{}
+}
 
+func (e *BadLevelError) Error() string { return fmt.Sprintf("Unknown log level: %v", e.level) }
+
+// Logger is a simple multi-level logger.
 type Logger struct {
-	level int
+	Level int
+	Writer io.Writer
+}
+
+func NewLogger(level interface{}, writer io.Writer) *Logger {
+	var l Logger
+	l.SetLevel(level)
+	l.Writer = writer
+	return &l
 }
 
 // SetLevel sets the output level for the logger.
@@ -49,13 +61,13 @@ type Logger struct {
 func (l *Logger) SetLevel(level interface{}) error {
 	switch level {
 	case ERROR, "ERROR":
-		l.level = ERROR
+		l.Level = ERROR
 	case INFO, "INFO":
-		l.level = INFO
+		l.Level = INFO
 	case DEBUG, "DEBUG":
-		l.level = DEBUG
+		l.Level = DEBUG
 	default:
-		return ErrLevel
+		return &BadLevelError{level}
 	}
 	return nil
 }
@@ -64,10 +76,10 @@ func (l *Logger) SetLevel(level interface{}) error {
 // To log messages at predefined levels you can use the convenience
 // functions Fatal(), Error(), Info(), Debug().
 func (l *Logger) Log(level int, msgType string, format string, v ...interface{}) {
-	if level <= l.level {
+	if level <= l.Level {
 		msg := fmt.Sprintf(format, v...)
 		t := time.Now().Format(time.RFC1123)
-		fmt.Printf("%s [%s]: %s\n", t, msgType, msg)
+		fmt.Fprintf(l.Writer, "%s [%s]: %s\n", t, msgType, msg)
 
 	}
 }
@@ -94,7 +106,7 @@ func (l *Logger) Debug(format string, v ...interface{}) {
 }
 
 
-var DefaultLogger Logger
+var DefaultLogger = NewLogger(ERROR, os.Stdout)
 
 // SetLevel sets the output level for the default logger.
 func SetLevel(level interface{}) error {
