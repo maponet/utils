@@ -40,12 +40,6 @@ const (
 // ErrLevel indicates that the specified log level is not valid.
 var ErrLevel = errors.New("Unknown log level")
 
-// FlagLevel returns a string flag that can be used with the flag package
-// to set the log level in command line applications.
-func FlagLevel(flagname string) *string {
-	return flag.String(flagname, "ERROR", "set loglevel [ERROR|INFO|DEBUG]")
-}
-
 type Logger struct {
 	level int
 }
