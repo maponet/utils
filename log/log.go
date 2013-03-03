@@ -37,76 +37,40 @@ const (
 	DEBUG
 )
 
-// ErrLevel indicates that the specified log level is not valid
+// ErrLevel indicates that the specified log level is not valid.
 var ErrLevel = errors.New("Unknown log level")
 
-// SetLevel sets the output level for the global logger
-func SetLevel(level int) error {
-	if level > DEBUG {
-		return ErrLevel
-	}
-	l.level = level
-	return nil
-}
-
-// SetLevelString sets the output level for the global logger
-func SetLevelString(name string) error {
-	level, err := StringToLevel(name)
-	if err != nil || level > DEBUG {
-		return ErrLevel
-	}
-	l.level = level
-	return nil
-}
-
-// LevelToString converts a log level to its string representation
-func LevelToString(level int) (string, error) {
-	var s string
-	switch level {
-	case ERROR:
-		s = "ERROR"
-	case INFO:
-		s = "INFO"
-	case DEBUG:
-		s = "DEBUG"
-	default:
-		return "", ErrLevel
-	}
-	return s, nil
-}
-
-// StringToLevel converts a string to the corresponding log level
-func StringToLevel(name string) (int, error) {
-	var level int
-	switch name {
-	case "ERROR":
-		level = ERROR
-	case "INFO":
-		level = INFO
-	case "DEBUG":
-		level = DEBUG
-	default:
-		return -1, ErrLevel
-	}
-	return level, nil
-}
-
+// FlagLevel returns a string flag that can be used with the flag package
+// to set the log level in command line applications.
 func FlagLevel(flagname string) *string {
 	return flag.String(flagname, "ERROR", "set loglevel [ERROR|INFO|DEBUG]")
 }
 
-type logger struct {
+type Logger struct {
 	level int
 }
 
-var l logger
+// SetLevel sets the output level for the logger.
+// 'level' can be either a string or an int.
+func (l *Logger) SetLevel(level interface{}) error {
+	switch level {
+	case ERROR, "ERROR":
+		l.level = ERROR
+	case INFO, "INFO":
+		l.level = INFO
+	case DEBUG, "DEBUG":
+		l.level = DEBUG
+	default:
+		return ErrLevel
+	}
+	return nil
+}
 
-func Log(level int, format string, v ...interface{}) {
+// Log logs a message with custom level and type.
+// To log messages at predefined levels you can use the convenience
+// functions Fatal(), Error(), Info(), Debug().
+func (l *Logger) Log(level int, msgType string, format string, v ...interface{}) {
 	if level <= l.level {
-		msgType, err := LevelToString(level)
-		if err != nil {
-			Fatal(err.Error())
-		}
 		msg := fmt.Sprintf(format, v...)
 		t := time.Now().Format(time.RFC1123)
 		fmt.Printf("%s [%s]: %s\n", t, msgType, msg)
@@ -114,23 +78,52 @@ func Log(level int, format string, v ...interface{}) {
 	}
 }
 
-// Fatal logs a message at "ERROR" level and terminates the program
-func Fatal(format string, v ...interface{}) {
-	Log(ERROR, format, v...)
+// Fatal logs a message at "ERROR" level and terminates the program.
+func (l *Logger) Fatal(format string, v ...interface{}) {
+	l.Log(ERROR, "ERROR", format, v...)
 	os.Exit(1)
 }
 
-// Error logs a message at "ERROR" level
-func Error(format string, v ...interface{}) {
-	Log(ERROR, format, v...)
+// Error logs a message at "ERROR" level.
+func (l *Logger) Error(format string, v ...interface{}) {
+	l.Log(ERROR, "ERROR", format, v...)
 }
 
-// Info logs a message at "INFO" level
-func Info(format string, v ...interface{}) {
-	Log(INFO, format, v...)
+// Info logs a message at "INFO" level.
+func (l *Logger) Info(format string, v ...interface{}) {
+	l.Log(INFO, "INFO", format, v...)
 }
 
-// Debug logs a message at "DEBUG" level
-func Debug(format string, v ...interface{}) {
-	Log(DEBUG, format, v...)
+// Debug logs a message at "DEBUG" level.
+func (l *Logger) Debug(format string, v ...interface{}) {
+	l.Log(DEBUG, "DEBUG", format, v...)
+}
+
+
+var DefaultLogger Logger
+
+// SetLevel sets the output level for the default logger.
+func SetLevel(level interface{}) error {
+	return DefaultLogger.SetLevel(level)
+}
+
+// Fatal logs a message at "ERROR" level with the default logger and
+// terminates the program.
+func Fatal(msg string, v ...interface{}) {
+	DefaultLogger.Fatal(msg, v...)
+}
+
+// Error logs a message at "ERROR" level with the default logger.
+func Error(msg string, v ...interface{}) {
+	DefaultLogger.Error(msg, v...)
+}
+
+// Info logs a message at "INFO" level with the default logger.
+func Info(msg string, v ...interface{}) {
+	DefaultLogger.Info(msg, v...)
+}
+
+// Debug logs a message at "DEBUG" level with the default logger.
+func Debug(msg string, v ...interface{}) {
+	DefaultLogger.Debug(msg, v...)
 }
