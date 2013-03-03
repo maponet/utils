@@ -24,9 +24,9 @@ package log
 
 import (
 	"fmt"
+	"io"
 	"os"
 	"time"
-	"io"
 )
 
 // Available log levels
@@ -45,7 +45,7 @@ func (e *BadLevelError) Error() string { return fmt.Sprintf("Unknown log level: 
 
 // Logger is a simple multi-level logger.
 type Logger struct {
-	Level int
+	Level  int
 	Writer io.Writer
 }
 
@@ -104,7 +104,6 @@ func (l *Logger) Info(format string, v ...interface{}) {
 func (l *Logger) Debug(format string, v ...interface{}) {
 	l.Log(DEBUG, "DEBUG", format, v...)
 }
-
 
 var DefaultLogger = NewLogger(ERROR, os.Stdout)
 
