@@ -24,13 +24,13 @@ package conf
 
 import (
 	"bufio"
+	"bytes"
 	"fmt"
 	"io"
 	"os"
 	"regexp"
 	"strconv"
 	"sync"
-	"bytes"
 )
 
 type NotFoundError struct {
@@ -51,24 +51,26 @@ func (e *ConfigSyntaxError) Error() string {
 var (
 	PatternOption, _  = regexp.Compile("(.*)=([^#]*)")
 	PatternComment, _ = regexp.Compile("^#")
-	PatternEmpty, _ = regexp.Compile("^[\t\n\f\r ]$")
+	PatternEmpty, _   = regexp.Compile("^[\t\n\f\r ]$")
+	PatternSection, _ = regexp.Compile("^\\[(.*)\\]([^#]*)")
 )
 
 // Config is a simple synchronized object that can be used to parse
 // configuration files and store key=value pairs
 type Config struct {
-	values map[string]string
-	mutex  sync.RWMutex
+	sections map[string]map[string]string
+	mutex    sync.RWMutex
 }
 
 func NewConfig() *Config {
 	var c Config
-	c.values = make(map[string]string)
+	c.sections = make(map[string]map[string]string)
 	return &c
 }
 
 // Parse
 func (c *Config) Parse(r *bufio.Reader) error {
+	var section string = "default"
 	for {
 		l, err := r.ReadBytes('\n')
 		if err == io.EOF {
@@ -81,9 +83,12 @@ func (c *Config) Parse(r *bufio.Reader) error {
 			continue
 		case PatternComment.Match(l):
 			continue
+		case PatternSection.Match(l):
+			m := PatternSection.FindSubmatch(l)
+			section = string(bytes.TrimSpace(m[1]))
 		case PatternOption.Match(l):
 			m := PatternOption.FindSubmatch(l)
-			c.Set(string(bytes.TrimSpace(m[1])), string(bytes.TrimSpace(m[2])))
+			c.Set(section, string(bytes.TrimSpace(m[1])), string(bytes.TrimSpace(m[2])))
 		default:
 			return &ConfigSyntaxError{string(l)}
 		}
@@ -107,19 +112,27 @@ func (c *Config) ParseFile(path string) error {
 }
 
 // Set
-func (c *Config) Set(key, value string) {
+func (c *Config) Set(section, key, value string) {
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
 
-	c.values[key] = value
+	if _, ok := c.sections[section]; !ok {
+		c.sections[section] = make(map[string]string)
+	}
+
+	c.sections[section][key] = value
 }
 
 // GetString
-func (c *Config) GetString(key string) (string, error) {
+func (c *Config) GetString(section, key string) (string, error) {
 	c.mutex.RLock()
 	defer c.mutex.RUnlock()
 
-	v, ok := c.values[key]
+	if _, ok := c.sections[section]; !ok {
+		return "", &NotFoundError{section}
+	}
+
+	v, ok := c.sections[section][key]
 	if !ok {
 		return v, &NotFoundError{key}
 	}
@@ -127,8 +140,8 @@ func (c *Config) GetString(key string) (string, error) {
 }
 
 // GetBool
-func (c *Config) GetBool(key string) (bool, error) {
-	s, err := c.GetString(key)
+func (c *Config) GetBool(section, key string) (bool, error) {
+	s, err := c.GetString(section, key)
 	if err != nil {
 		return *new(bool), err
 	}
@@ -137,8 +150,8 @@ func (c *Config) GetBool(key string) (bool, error) {
 }
 
 // GetInt
-func (c *Config) GetInt(key string) (int, error) {
-	s, err := c.GetString(key)
+func (c *Config) GetInt(section, key string) (int, error) {
+	s, err := c.GetString(section, key)
 	if err != nil {
 		return *new(int), err
 	}
@@ -147,8 +160,8 @@ func (c *Config) GetInt(key string) (int, error) {
 }
 
 // GetFloat64
-func (c *Config) GetFloat64(key string) (float64, error) {
-	s, err := c.GetString(key)
+func (c *Config) GetFloat64(section, key string) (float64, error) {
+	s, err := c.GetString(section, key)
 	if err != nil {
 		return *new(float64), err
 	}
@@ -162,22 +175,22 @@ func ParseFile(path string) error {
 	return DefaultConfig.ParseFile(path)
 }
 
-func Set(key, value string) {
-	DefaultConfig.Set(key, value)
+func Set(section, key, value string) {
+	DefaultConfig.Set(section, key, value)
 }
 
-func GetString(key string) (string, error) {
-	return DefaultConfig.GetString(key)
+func GetString(section, key string) (string, error) {
+	return DefaultConfig.GetString(section, key)
 }
 
-func GetBool(key string) (bool, error) {
-	return DefaultConfig.GetBool(key)
+func GetBool(section, key string) (bool, error) {
+	return DefaultConfig.GetBool(section, key)
 }
 
-func GetInt(key string) (int, error) {
-	return DefaultConfig.GetInt(key)
+func GetInt(section, key string) (int, error) {
+	return DefaultConfig.GetInt(section, key)
 }
 
-func GetFloat64(key string) (float64, error) {
-	return DefaultConfig.GetFloat64(key)
+func GetFloat64(section, key string) (float64, error) {
+	return DefaultConfig.GetFloat64(section, key)
 }
