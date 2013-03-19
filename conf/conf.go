@@ -51,7 +51,7 @@ func (e *ConfigSyntaxError) Error() string {
 var (
 	PatternOption, _  = regexp.Compile("(.*)=([^#]*)")
 	PatternComment, _ = regexp.Compile("^#")
-	PatternEmpty, _   = regexp.Compile("^[\t\n\f\r ]$")
+	PatternEmpty, _   = regexp.Compile("^[\t\n\f\r ]+$")
 	PatternSection, _ = regexp.Compile("^\\[(.*)\\]([^#]*)")
 )
 
