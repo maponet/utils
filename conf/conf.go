@@ -68,9 +68,18 @@ func NewConfig() *Config {
 	return &c
 }
 
+func (c *Config) GetSections() []string {
+	sections := make([]string, 0)
+	for k,_ := range(c.sections) {
+		sections = append(sections, k)
+	}
+
+	return sections
+}
+
 // Parse
 func (c *Config) Parse(r *bufio.Reader) error {
-	var section string = "default"
+	var section string = "defaults"
 	for {
 		l, err := r.ReadBytes('\n')
 		if err == io.EOF {
